@@ -364,11 +364,14 @@ app.post('/api/generate', async (req, res) => {
 
     res.json({ content: message.content[0].text });
   } catch (error) {
-    console.error('Claude API error:', error.message);
-    const msg = error.status === 401
-      ? 'API Key inválida. Verifique a variável ANTHROPIC_API_KEY.'
-      : 'Erro ao gerar conteúdo. Tente novamente em alguns segundos.';
-    res.status(500).json({ error: msg });
+    const status = error.status || error.statusCode || 500;
+    console.error('Claude API error:', status, error.message);
+    let msg = 'Erro ao gerar conteúdo. Tente novamente em alguns segundos.';
+    if (status === 401) msg = 'API Key inválida. Verifique a variável ANTHROPIC_API_KEY.';
+    else if (status === 403) msg = 'Sem permissão. Verifique se sua conta Anthropic tem créditos e billing configurado.';
+    else if (status === 429) msg = 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.';
+    else if (status === 400) msg = `Requisição inválida: ${error.message}`;
+    res.status(500).json({ error: msg, code: status });
   }
 });
 
